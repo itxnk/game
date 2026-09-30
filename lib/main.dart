@@ -6,6 +6,13 @@ import 'package:flutter/services.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Allow the game to rotate with the phone in portrait or landscape.
+  SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
   runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: RaceGame()));
 }
 
@@ -61,7 +68,8 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   }
 
   void start() {
-    x = 0; v = 12; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 0;
+    // Start at a useful driving speed instead of slowly building up from a crawl.
+    x = 0; v = 18; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 0;
     cars = [];
     phase = Phase.playing;
   }
@@ -92,7 +100,8 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     // Engine, brakes, drag
     useNos = nosKey && nitro > 0 && gas;
     double acc = 0;
-    if (gas) acc += 14; else acc -= 3;
+    // Stronger throttle response makes the forward button feel immediate.
+    if (gas) acc += 24; else acc -= 3;
     if (useNos) { acc += 16; nitro = max(0, nitro - 25 * dt); }
     else { nitro = min(100, nitro + 6 * dt); }
     if (braking) acc -= 30;
@@ -148,6 +157,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
 
   Widget hold(IconData icon, Color col, void Function(bool) f, {double s = 76}) {
     return Listener(
+      behavior: HitTestBehavior.opaque,
       onPointerDown: (_) => f(true),
       onPointerUp: (_) => f(false),
       onPointerCancel: (_) => f(false),
@@ -164,21 +174,30 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    const hud = TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold);
     return Scaffold(
       backgroundColor: Colors.black,
       body: LayoutBuilder(builder: (context, cs) {
         size = Size(cs.maxWidth, cs.maxHeight);
+        final shortSide = min(cs.maxWidth, cs.maxHeight);
+        final landscape = cs.maxWidth > cs.maxHeight;
+        final controlSize = (shortSide * (landscape ? 0.13 : 0.18)).clamp(58.0, 82.0);
+        final smallControlSize = (controlSize * 0.84).clamp(52.0, 70.0);
+        final horizontalPad = (shortSide * 0.045).clamp(12.0, 24.0);
+        final gap = (shortSide * 0.025).clamp(8.0, 16.0);
+        final hudSize = landscape ? 18.0 : (shortSide * 0.055).clamp(18.0, 24.0);
+        const safeBottom = 8.0;
+        final hud = TextStyle(color: Colors.white, fontSize: hudSize, fontWeight: FontWeight.bold);
+
         return Stack(children: [
           Positioned.fill(child: CustomPaint(painter: WorldPainter(this))),
           SafeArea(
             child: Stack(children: [
               Positioned(top: 12, left: 16, child: Text('Score $score', style: hud)),
-              Positioned(top: 12, right: 16, child: Text('Best $best', style: hud)),
+              Positioned(top: 8, right: horizontalPad, child: Text('Best $best', style: hud)),
               Positioned(
-                top: 46, left: 16,
+                top: landscape ? 38 : 46, left: horizontalPad,
                 child: SizedBox(
-                  width: 110,
+                  width: landscape ? 90 : 110,
                   child: LinearProgressIndicator(
                     value: nitro / 100, minHeight: 8,
                     color: Colors.orangeAccent, backgroundColor: Colors.white24,
@@ -186,23 +205,23 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
                 ),
               ),
               Positioned(
-                bottom: 120, left: 0, right: 0,
+                bottom: landscape ? 86 : 110, left: 0, right: 0,
                 child: Center(child: Text('${(v * 6).round()} km/h', style: hud)),
               ),
               Positioned(
-                bottom: 16, left: 20, right: 20,
+                bottom: safeBottom, left: horizontalPad, right: horizontalPad,
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Row(children: [
-                    hold(Icons.arrow_back, Colors.white, (b) => tL = b),
-                    const SizedBox(width: 14),
-                    hold(Icons.arrow_forward, Colors.white, (b) => tR = b),
+                    hold(Icons.arrow_back, Colors.white, (b) => tL = b, s: controlSize),
+                    SizedBox(width: gap),
+                    hold(Icons.arrow_forward, Colors.white, (b) => tR = b, s: controlSize),
                   ]),
                   Row(children: [
-                    hold(Icons.stop, Colors.red, (b) => tBrk = b, s: 64),
-                    const SizedBox(width: 12),
-                    hold(Icons.bolt, Colors.orange, (b) => tNos = b, s: 64),
-                    const SizedBox(width: 12),
-                    hold(Icons.keyboard_arrow_up, Colors.green, (b) => tGas = b),
+                    hold(Icons.stop, Colors.red, (b) => tBrk = b, s: smallControlSize),
+                    SizedBox(width: gap),
+                    hold(Icons.bolt, Colors.orange, (b) => tNos = b, s: smallControlSize),
+                    SizedBox(width: gap),
+                    hold(Icons.keyboard_arrow_up, Colors.green, (b) => tGas = b, s: controlSize),
                   ]),
                 ]),
               ),
