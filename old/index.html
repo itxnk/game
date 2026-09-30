@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NASRR Car Game</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #111;
+    font-family: Arial, sans-serif;
+}
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #228b22;
+    overflow: hidden;
+}
+
+#road {
+    position: absolute;
+    width: 60%;
+    height: 100%;
+    left: 20%;
+    background: #333;
+    border-left: 8px solid white;
+    border-right: 8px solid white;
+}
+
+.line {
+    position: absolute;
+    width: 8px;
+    height: 70px;
+    background: white;
+}
+
+#car {
+    position: absolute;
+    width: 50px;
+    height: 90px;
+    background: #00cc44;
+    border-radius: 10px;
+    bottom: 30px;
+    left: calc(50% - 25px);
+    z-index: 5;
+}
+
+#car::before {
+    content: "";
+    position: absolute;
+    width: 32px;
+    height: 28px;
+    background: #87ceeb;
+    left: 9px;
+    top: 12px;
+    border-radius: 5px;
+}
+
+#car::after {
+    content: "";
+    position: absolute;
+    width: 36px;
+    height: 10px;
+    background: #222;
+    left: 7px;
+    bottom: 12px;
+    border-radius: 5px;
+}
+
+.enemy {
+    position: absolute;
+    width: 50px;
+    height: 90px;
+    border-radius: 10px;
+    z-index: 4;
+}
+
+#score {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-size: 25px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+#startScreen,
+#gameOver {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+}
+
+#gameOver {
+    display: none;
+}
+
+button {
+    padding: 15px 35px;
+    border: none;
+    border-radius: 10px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.controls {
+    position: absolute;
+    bottom: 25px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 30px;
+    z-index: 15;
+}
+
+.control {
+    width: 80px;
+    height: 60px;
+    font-size: 30px;
+    background: rgba(255,255,255,.7);
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="road"></div>
+
+    <div id="score">
+        Score: 0
+    </div>
+
+    <div id="car"></div>
+
+    <div class="controls">
+        <button class="control" id="left">⬅️</button>
+        <button class="control" id="right">➡️</button>
+    </div>
+
+    <div id="startScreen">
+        <h1>🚗 NASRR CAR GAME</h1>
+        <p>Dodge the enemy cars!</p>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+
+    <div id="gameOver">
+        <h1>💥 GAME OVER</h1>
+        <h2 id="finalScore"></h2>
+        <button onclick="startGame()">PLAY AGAIN</button>
+    </div>
+
+</div>
+
+<script>
+
+const game = document.getElementById("game");
+const car = document.getElementById("car");
+const scoreText = document.getElementById("score");
+
+let playerX;
+let score;
+let gameRunning = false;
+let enemies = [];
+let speed = 5;
+
+const lanes = [25, 50, 75];
+
+function startGame() {
+
+    document.getElementById("startScreen").style.display = "none";
+    document.getElementById("gameOver").style.display = "none";
+
+    enemies.forEach(enemy => enemy.remove());
+    enemies = [];
+
+    score = 0;
+    speed = 5;
+
+    playerX = 50;
+
+    car.style.left = "calc(50% - 25px)";
+
+    gameRunning = true;
+
+    gameLoop();
+    createEnemy();
+}
+
+function moveLeft() {
+
+    if (!gameRunning) return;
+
+    if (playerX > 25) {
+        playerX -= 25;
+        car.style.left = `calc(${playerX}% - 25px)`;
+    }
+}
+
+function moveRight() {
+
+    if (!gameRunning) return;
+
+    if (playerX < 75) {
+        playerX += 25;
+        car.style.left = `calc(${playerX}% - 25px)`;
+    }
+}
+
+document.getElementById("left").addEventListener("click", moveLeft);
+document.getElementById("right").addEventListener("click", moveRight);
+
+document.addEventListener("keydown", function(event) {
+
+    if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        moveLeft();
+    }
+
+    if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        moveRight();
+    }
+
+});
+
+function createEnemy() {
+
+    if (!gameRunning) return;
+
+    const enemy = document.createElement("div");
+
+    enemy.classList.add("enemy");
+
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+
+    enemy.style.left = `calc(${lane}% - 25px)`;
+    enemy.style.top = "-100px";
+
+    const colors = [
+        "#ff0000",
+        "#0066ff",
+        "#ff9900",
+        "#9900ff",
+        "#ffff00"
+    ];
+
+    enemy.style.background =
+        colors[Math.floor(Math.random() * colors.length)];
+
+    game.appendChild(enemy);
+
+    enemies.push(enemy);
+
+    setTimeout(createEnemy, 900);
+}
+
+function gameLoop() {
+
+    if (!gameRunning) return;
+
+    enemies.forEach((enemy, index) => {
+
+        let top = parseInt(enemy.style.top);
+
+        top += speed;
+
+        enemy.style.top = top + "px";
+
+        if (checkCollision(car, enemy)) {
+            endGame();
+        }
+
+        if (top > window.innerHeight) {
+
+            enemy.remove();
+
+            enemies.splice(index, 1);
+
+            score++;
+
+            scoreText.innerText = "Score: " + score;
+
+            if (score % 10 === 0) {
+                speed += 1;
+            }
+        }
+
+    });
+
+    requestAnimationFrame(gameLoop);
+}
+
+function checkCollision(a, b) {
+
+    const rect1 = a.getBoundingClientRect();
+    const rect2 = b.getBoundingClientRect();
+
+    return !(
+        rect1.bottom < rect2.top ||
+        rect1.top > rect2.bottom ||
+        rect1.right < rect2.left ||
+        rect1.left > rect2.right
+    );
+}
+
+function endGame() {
+
+    gameRunning = false;
+
+    document.getElementById("finalScore").innerText =
+        "Your Score: " + score;
+
+    document.getElementById("gameOver").style.display = "flex";
+}
+
+</script>
+
+</body>
+</html>
