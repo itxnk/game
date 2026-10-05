@@ -1,9 +1,8 @@
-name: Game CI/CD
+name: Game CI/CD (nk)
 
 on:
   push:
     branches:
-      - main
       - nk
     paths-ignore:
       - "k8s/**"
@@ -11,7 +10,6 @@ on:
       - ".github/workflows/**"
   pull_request:
     branches:
-      - main
       - nk
 
 permissions:
@@ -23,7 +21,7 @@ env:
 jobs:
   test:
     name: Test Flutter app
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,7 +49,7 @@ jobs:
     name: Build and push Docker image
     needs: test
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,7 +77,8 @@ jobs:
   update-manifest:
     name: Update Kubernetes image
     needs: build-and-push
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
