@@ -20,9 +20,11 @@ enum Phase { menu, playing, over }
 
 class Traffic {
   double x, z, speed;
+  // Position at the previous frame, used for swept collision checks.
+  double prevZ;
   final Color color;
   bool passed = false;
-  Traffic(this.x, this.z, this.speed, this.color);
+  Traffic(this.x, this.z, this.speed, this.color) : prevZ = z;
 }
 
 class RaceGame extends StatefulWidget {
@@ -70,6 +72,10 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   void start() {
     // Start at a useful driving speed instead of slowly building up from a crawl.
     x = 0; v = 18; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 0;
+    shake = 0; useNos = false; braking = false;
+    // The crash overlay swallows pointer-up events, so a button held during the
+    // crash would stay "pressed" forever. Clear all touch state on every start.
+    tL = tR = tGas = tBrk = tNos = false;
     cars = [];
     phase = Phase.playing;
   }
@@ -141,15 +147,20 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     }
 
     for (final c in cars) {
+      c.prevZ = c.z;
       c.z += (c.speed - v) * dt;
       if (!c.passed && c.z < -1.2) {
         c.passed = true;
         bonus += (c.x - x).abs() < 1.1 ? 5 : 1; // near-miss bonus
       }
-      if ((c.x - x).abs() < 0.55 && c.z.abs() < 1.05) {
+      // Sweep between last frame's and this frame's position so a fast closing
+      // speed (or a slow frame) can't skip straight over the player's car.
+      final lo = min(c.prevZ, c.z), hi = max(c.prevZ, c.z);
+      if ((c.x - x).abs() < 0.55 && lo < 1.05 && hi > -1.05) {
         phase = Phase.over;
         shake = 0.6;
         best = max(best, score);
+        break;
       }
     }
     cars.removeWhere((c) => c.z < -12 || c.z > zTop + 30);
@@ -192,7 +203,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
           Positioned.fill(child: CustomPaint(painter: WorldPainter(this))),
           SafeArea(
             child: Stack(children: [
-              Positioned(top: 12, left: 16, child: Text('Score $score', style: hud)),
+              Positioned(top: 12, left: horizontalPad, child: Text('Score $score', style: hud)),
               Positioned(top: 8, right: horizontalPad, child: Text('Best $best', style: hud)),
               Positioned(
                 top: landscape ? 38 : 46, left: horizontalPad,

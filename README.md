@@ -1,18 +1,39 @@
-# nasrr_racer
+# Nasrr Racer
 
-A new Flutter project.
+A top-down endless racing game built with Flutter. Weave through traffic on a
+four-lane road, grab near-miss bonus points and survive as long as you can.
 
-## Getting Started
+## Controls
 
-This project is a starting point for a Flutter application.
+| Action | Touch | Keyboard |
+| --- | --- | --- |
+| Steer | Left / right arrow buttons | `A` / `D` or ← / → |
+| Gas | Green button | `W` or ↑ |
+| Brake | Red button | `S` or ↓ |
+| Nitro | ⚡ button | `Space` (needs gas) |
 
-A few resources to get you started if this is your first Flutter project:
+Passing a car closely gives 5 bonus points instead of 1. Nitro drains while in
+use and recharges when released.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Run it
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-# game
+```bash
+flutter pub get
+flutter run            # pick a device, or add -d chrome for web
+```
+
+Build the web version:
+
+```bash
+flutter build web
+```
+
+The game rotates with the device in both portrait and landscape.
+
+## Project layout
+
+- `lib/main.dart` – the whole game: physics, traffic, HUD and rendering
+- `web/`, `android/` – platform runners
+- `public/`, `build/web/` – pre-built web output (rebuild with
+  `flutter build web` after changing the code)
+- `old/` – an earlier version of the web page
