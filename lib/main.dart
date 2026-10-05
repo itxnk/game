@@ -48,6 +48,8 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
 
   // touch state
   bool tL = false, tR = false, tGas = false, tBrk = false, tNos = false;
+  double? dragStartX;
+  double dragSteer = 0;
 
   static const colors = [
     Color(0xFFE53935), Color(0xFF1E88E5), Color(0xFFFB8C00),
@@ -71,11 +73,13 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
 
   void start() {
     // Start at a useful driving speed instead of slowly building up from a crawl.
-    x = 0; v = 18; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 0;
+    x = 0; v = 5; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 1.2;
     shake = 0; useNos = false; braking = false;
     // The crash overlay swallows pointer-up events, so a button held during the
     // crash would stay "pressed" forever. Clear all touch state on every start.
     tL = tR = tGas = tBrk = tNos = false;
+    dragStartX = null;
+    dragSteer = 0;
     cars = [];
     phase = Phase.playing;
   }
@@ -98,21 +102,22 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     final nosKey = tNos || key([LogicalKeyboardKey.space]);
 
     // Steering: smoothed input, grip grows with speed (can't turn when parked)
-    final target = (right ? 1.0 : 0.0) - (left ? 1.0 : 0.0);
+    final buttonTarget = (right ? 1.0 : 0.0) - (left ? 1.0 : 0.0);
+    final target = dragSteer.abs() > 0.05 ? dragSteer : buttonTarget;
     steer += (target - steer) * min(1.0, 7 * dt);
     final grip = min(1.0, v / 8);
     x += steer * grip * (2.5 + v * 0.09) * dt;
 
     // Engine, brakes, drag
     useNos = nosKey && nitro > 0 && gas;
-    double acc = 0;
-    // Stronger throttle response makes the forward button feel immediate.
-    if (gas) acc += 24; else acc -= 3;
+    double acc = 7.0; // gentle automatic acceleration from the starting line
+    if (gas) acc += 18; else acc -= 3;
     if (useNos) { acc += 16; nitro = max(0, nitro - 25 * dt); }
     else { nitro = min(100, nitro + 6 * dt); }
     if (braking) acc -= 30;
     acc -= 0.0085 * v * v;
     v = max(0, v + acc * dt);
+    v = min(v, gas ? 58 : 46);
 
     // Off-road walls: scrape and slow down
     const lim = 1.7;
@@ -183,6 +188,22 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     );
   }
 
+  void onDragStart(PointerDownEvent e) {
+    if (phase != Phase.playing) return;
+    dragStartX = e.position.dx;
+  }
+
+  void onDragUpdate(PointerMoveEvent e) {
+    if (phase != Phase.playing || dragStartX == null) return;
+    final delta = (e.position.dx - dragStartX!) / max(70, size.width * 0.22);
+    dragSteer = delta.clamp(-1.0, 1.0);
+  }
+
+  void onDragEnd(PointerEvent e) {
+    dragStartX = null;
+    dragSteer = 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -199,7 +220,13 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
         const safeBottom = 8.0;
         final hud = TextStyle(color: Colors.white, fontSize: hudSize, fontWeight: FontWeight.bold);
 
-        return Stack(children: [
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: onDragStart,
+          onPointerMove: onDragUpdate,
+          onPointerUp: onDragEnd,
+          onPointerCancel: onDragEnd,
+          child: Stack(children: [
           Positioned.fill(child: CustomPaint(painter: WorldPainter(this))),
           SafeArea(
             child: Stack(children: [
@@ -249,8 +276,8 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
                   Text(
                     phase == Phase.menu
                         ? 'Weave through traffic. Near misses give bonus points.\n'
-                          'Touch: arrows steer, green = gas, red = brake, ⚡ = nitro\n'
-                          'Keyboard: WASD / arrows, Space = nitro'
+                          'Swipe or use arrows to steer • Green = RACE\n'
+                          'Start slowly, then build speed • Red = brake • ⚡ = nitro'
                         : 'Score $score   •   Best $best',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white70, fontSize: 16),
@@ -260,7 +287,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
                     onPressed: start,
                     style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16)),
-                    child: Text(phase == Phase.menu ? 'START' : 'PLAY AGAIN',
+                    child: Text(phase == Phase.menu ? 'START RACE' : 'PLAY AGAIN',
                         style: const TextStyle(fontSize: 20)),
                   ),
                 ]),
@@ -322,6 +349,19 @@ class WorldPainter extends CustomPainter {
     for (final lx in [-1.0, 0.0, 1.0]) {
       for (double y = -3.2 * sc + doff; y < s.height; y += 3.2 * sc) {
         c.drawRect(Rect.fromLTWH(cx + lx * sc - 3, y, 6, sc * 1.6), dp);
+      }
+    }
+
+    // Compact start line: kept close behind the player's car.
+    final startY = py + sc * 1.55;
+    final tile = sc * .28;
+    for (int row = 0; row < 2; row++) {
+      for (int col = 0; col < 12; col++) {
+        final color = (row + col).isEven ? Colors.white : Colors.black;
+        c.drawRect(
+          Rect.fromLTWH(left + col * roadW / 12, startY + row * tile, roadW / 12, tile),
+          Paint()..color = color,
+        );
       }
     }
 
