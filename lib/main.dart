@@ -111,10 +111,20 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     // Engine, brakes, drag
     useNos = nosKey && nitro > 0 && gas;
     double acc = 7.0; // gentle automatic acceleration from the starting line
-    if (gas) acc += 18; else acc -= 3;
-    if (useNos) { acc += 16; nitro = max(0, nitro - 25 * dt); }
-    else { nitro = min(100, nitro + 6 * dt); }
-    if (braking) acc -= 30;
+    if (gas) {
+      acc += 18;
+    } else {
+      acc -= 3;
+    }
+    if (useNos) {
+      acc += 16;
+      nitro = max(0, nitro - 25 * dt);
+    } else {
+      nitro = min(100, nitro + 6 * dt);
+    }
+    if (braking) {
+      acc -= 30;
+    }
     acc -= 0.0085 * v * v;
     v = max(0, v + acc * dt);
     v = min(v, gas ? 58 : 46);
@@ -227,7 +237,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
           onPointerUp: onDragEnd,
           onPointerCancel: onDragEnd,
           child: Stack(children: [
-          Positioned.fill(child: CustomPaint(painter: WorldPainter(this))),
+          Positioned.fill(child: CustomPaint(painter: _WorldPainter(this))),
           SafeArea(
             child: Stack(children: [
               Positioned(top: 12, left: horizontalPad, child: Text('Score $score', style: hud)),
@@ -299,9 +309,9 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   }
 }
 
-class WorldPainter extends CustomPainter {
+class _WorldPainter extends CustomPainter {
   final _RaceGameState g;
-  WorldPainter(this.g);
+  _WorldPainter(this.g);
   @override
   bool shouldRepaint(covariant CustomPainter old) => true;
 
