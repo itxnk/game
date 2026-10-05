@@ -1,4 +1,4 @@
-name: Game CI/CD (nk)
+name: Game CI/CD (nk) — verified
 
 on:
   push:
