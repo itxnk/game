@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nasrr-game
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nasrr-game
+  template:
+    metadata:
+      labels:
+        app: nasrr-game
+    spec:
+      containers:
+        - name: web
+          image: nasrr-game:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nasrr-game
+spec:
+  type: NodePort
+  selector:
+    app: nasrr-game
+  ports:
+    - port: 80
+      targetPort: 80
