@@ -14,6 +14,9 @@ RUN curl -L "https://storage.googleapis.com/flutter_infra_release/releases/stabl
 
 ENV PATH="/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:${PATH}"
 
+# Flutter's SDK is extracted by root, so tell Git that /opt/flutter is trusted.
+RUN git config --global --add safe.directory /opt/flutter
+
 RUN flutter --version
 
 WORKDIR /app
