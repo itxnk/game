@@ -304,7 +304,8 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
                 ]),
               ),
             ),
-        ]);
+          ]),
+        );
       }),
     );
   }
