@@ -2,8 +2,6 @@ FROM debian:bookworm-slim AS build
 
 ARG FLUTTER_VERSION=3.47.5
 
-RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl git unzip xz-utils ca-certificates bash libglu1-mesa \
     && rm -rf /var/lib/apt/lists/*
@@ -15,6 +13,9 @@ RUN curl -L "https://storage.googleapis.com/flutter_infra_release/releases/stabl
     && rm flutter.tar.xz
 
 ENV PATH="/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:${PATH}"
+
+# Flutter SDK is extracted as root; explicitly trust its Git directory.
+RUN git config --global --add safe.directory /opt/flutter
 
 RUN flutter --version
 

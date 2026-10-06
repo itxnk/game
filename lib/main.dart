@@ -1,3 +1,4 @@
+// CI syntax verification
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -43,7 +44,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   // World units: road is 4 units wide (4 lanes), x in [-2, 2]. Speed in units/s.
   double x = 0, v = 0, steer = 0, dist = 0, nitro = 100, shake = 0, spawnT = 0;
   int bonus = 0, best = 0;
-  bool useNos = false, braking = false;
+  bool useNos = false, braking = false, paused = false;
   List<Traffic> cars = [];
 
   // touch state
@@ -74,7 +75,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   void start() {
     // Start at a useful driving speed instead of slowly building up from a crawl.
     x = 0; v = 5; steer = 0; dist = 0; nitro = 100; bonus = 0; spawnT = 1.2;
-    shake = 0; useNos = false; braking = false;
+    shake = 0; useNos = false; braking = false; paused = false;
     // The crash overlay swallows pointer-up events, so a button held during the
     // crash would stay "pressed" forever. Clear all touch state on every start.
     tL = tR = tGas = tBrk = tNos = false;
@@ -87,7 +88,7 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
   void _tick(Duration e) {
     final dt = ((e - last).inMicroseconds / 1e6).clamp(0.0, 0.05);
     last = e;
-    if (phase == Phase.playing) update(dt);
+    if (phase == Phase.playing && !paused) update(dt);
     if (shake > 0) shake -= dt;
     setState(() {});
   }
@@ -111,10 +112,20 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
     // Engine, brakes, drag
     useNos = nosKey && nitro > 0 && gas;
     double acc = 7.0; // gentle automatic acceleration from the starting line
-    if (gas) acc += 18; else acc -= 3;
-    if (useNos) { acc += 16; nitro = max(0, nitro - 25 * dt); }
-    else { nitro = min(100, nitro + 6 * dt); }
-    if (braking) acc -= 30;
+    if (gas) {
+      acc += 18;
+    } else {
+      acc -= 3;
+    }
+    if (useNos) {
+      acc += 16;
+      nitro = max(0, nitro - 25 * dt);
+    } else {
+      nitro = min(100, nitro + 6 * dt);
+    }
+    if (braking) {
+      acc -= 30;
+    }
     acc -= 0.0085 * v * v;
     v = max(0, v + acc * dt);
     v = min(v, gas ? 58 : 46);
@@ -227,11 +238,35 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
           onPointerUp: onDragEnd,
           onPointerCancel: onDragEnd,
           child: Stack(children: [
-          Positioned.fill(child: CustomPaint(painter: WorldPainter(this))),
+          Positioned.fill(child: CustomPaint(painter: _WorldPainter(this))),
           SafeArea(
             child: Stack(children: [
               Positioned(top: 12, left: horizontalPad, child: Text('Score $score', style: hud)),
               Positioned(top: 8, right: horizontalPad, child: Text('Best $best', style: hud)),
+              if (phase == Phase.playing)
+                Positioned(
+                  top: 6,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () => setState(() => paused = !paused),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white38),
+                        ),
+                        child: Icon(
+                          paused ? Icons.play_arrow : Icons.pause,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 top: landscape ? 38 : 46, left: horizontalPad,
                 child: SizedBox(
@@ -265,6 +300,27 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
               ),
             ]),
           ),
+          if (paused && phase == Phase.playing)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black54,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('PAUSED',
+                          style: TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 18),
+                      ElevatedButton.icon(
+                        onPressed: () => setState(() => paused = false),
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('RESUME RACE'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           if (phase != Phase.playing)
             Positioned.fill(
               child: Container(
@@ -293,15 +349,16 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
                 ]),
               ),
             ),
-        ]);
+          ]),
+        );
       }),
     );
   }
 }
 
-class WorldPainter extends CustomPainter {
+class _WorldPainter extends CustomPainter {
   final _RaceGameState g;
-  WorldPainter(this.g);
+  _WorldPainter(this.g);
   @override
   bool shouldRepaint(covariant CustomPainter old) => true;
 
