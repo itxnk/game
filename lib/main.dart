@@ -275,7 +275,6 @@ class _RaceGameState extends State<RaceGame> with SingleTickerProviderStateMixin
               ),
             ]),
           ),
-          ),
           if (phase != Phase.playing)
             Positioned.fill(
               child: Container(
