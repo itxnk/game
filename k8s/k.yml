@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: nasrr-game
-          image: docker.io/nasrullah125/nasrr-game:latest
+          image: docker.io/nasrullah125/nasrr-game:2c640ac19872fe3c64997731d4b4c86d1fdc9078
           imagePullPolicy: Always
           ports:
             - containerPort: 80
