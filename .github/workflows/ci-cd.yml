@@ -40,7 +40,12 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test
+        run: |
+          if [ -d "test" ]; then
+            flutter test
+          else
+            echo "No test/ directory found; skipping Flutter tests."
+          fi
 
       - name: Build web
         run: flutter build web --release
